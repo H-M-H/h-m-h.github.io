@@ -1,0 +1,68 @@
+<!doctype html><html lang=en-us prefix="og: http://ogp.me/ns# fb: http://ogp.me/ns/fb#"><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge,chrome=1"><meta name=description content><meta name=HandheldFriendly content="True"><meta name=MobileOptimized content="320"><meta name=viewport content="width=device-width,initial-scale=1"><meta name=keywords content><meta property="og:type" content="article"><meta property="og:description" content><meta property="og:title" content="Cast your iPad's Screen to Linux"><meta property="og:site_name" content="HMH's Blog"><meta property="og:image" content><meta property="og:image:type" content="image/jpeg"><meta property="og:image:width" content><meta property="og:image:height" content><meta property="og:url" content="http://example.org/posts/screencast-ipad-to-linux/"><meta property="og:locale" content="en-us"><meta property="article:published_time" content="2020-05-23"><meta property="article:modified_time" content="2020-05-23"><title>Cast your iPad's Screen to Linux</title><link rel=canonical href=http://example.org/posts/screencast-ipad-to-linux/><link rel=stylesheet href=https://unpkg.com/tachyons@4.11.1/css/tachyons.min.css><link rel=stylesheet href=http://example.org/css/style.css><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/highlightjs@9.12.0/styles/github-gist.css><link rel="shortcut icon" href=/favicon.ico type=image/x-icon><link rel=apple-touch-icon href=/apple-touch-icon.png></head><body lang=en-us class="sans-serif w-90 w-60-ns center center-ns mv2 mv5-ns" itemscope itemtype=http://schema.org/Article><span class=b>/</span>
+<a href=http://example.org/ class="b bb bw1 pb1 no-underline black">HMH's Blog</a><section id=main class=mt5><h1 itemprop=name id=title>Cast your iPad's Screen to Linux</h1><article itemprop=articleBody id=content class="w-90 lh-copy"><h2 id=overview>Overview</h2><p>This post is going to explain how to record the screen of your iPad and stream it to your Linux
+system with latencies of about two seconds. Unfortunately Apple makes things quite a bit more
+complicated as they have to be to keep you within their walled garden, so lets see how to break
+free.</p><p>There are three components to the solution I found:</p><ul><li>An app to stream the screen of your iPad to a Real-Time Messaging Protocol (RTMP) server.</li><li>An RTMP server that receives the stream and distributes it to clients that request the stream.</li><li>A program to connect to the RTMP server and playback the stream.</li></ul><h2 id=rtmp-server>RTMP Server</h2><p>The most complicated part in this setup is the RTMP server. The RTMP server we will use here is
+nginx using the RTMP module. On Arch Linux you can install the packages <code>nginx-mainline nginx-mainline-mod-rtmp</code>. On Ubuntu everything can be installed via: <code>apt install nginx libnginx-mod-rtmp</code>. On other distributions you may need to build the RTMP module from source, to do
+so refer to the official docs at <a href=https://github.com/arut/nginx-rtmp-module>https://github.com/arut/nginx-rtmp-module</a>.</p><p>After the installation nginx needs to be configured for livestreaming. To do so the file
+<code>/etc/nginx/nginx.conf</code> needs to be modified. If it does not yet exist, create it.
+The following configuration should get you up and running, apply customizations if necessary.</p><pre><code># this tells nginx to load the RTMP module
+# the path to it may vary depending on your distribution
+# make sure it actually points to the RTMP module you installed
+# also make sure it is placed somwhere at the top of this file
+load_module &quot;/usr/lib/nginx/modules/ngx_rtmp_module.so&quot;;
+
+rtmp {
+    server {
+
+        listen 1935;
+
+        chunk_size 4000;
+
+        application live {
+            # enable livestreaming
+            live on;
+
+            # no need to record the livestreams
+            record off;
+
+            # everyone is allowed to livestream to this server,
+            # you may want to limit this to the IP of your iPad
+            allow publish all;
+
+            # only localhost can access and play any livestreams
+            allow play 127.0.0.1;
+            deny play all;
+        }
+    }
+}
+</code></pre><p>For documentation on all RTMP options refer to
+<a href=https://github.com/arut/nginx-rtmp-module/wiki/Directives>https://github.com/arut/nginx-rtmp-module/wiki/Directives</a> .</p><h2 id=the-app>The App</h2><p>On your iPad an app is required to stream your screen via RTMP. After extensive research the only
+app I found to be acceptable is <a href=https://apps.apple.com/us/app/larix-screencaster/id1477313005>Larix
+Screencaster</a>. Unfortunately as of
+version 1.0.5 it still contains a bug that cuts off a part of your screen if you try to enable
+anything else than streaming in vertical/portrait mode. So make sure to set all your settings to
+vertical!</p><p>The settings in the main menu should look similar to this:
+<img src=/screencast-ipad-to-linux/larix_1.jpg alt="Larix Screencaster settings 1">
+To tell the app where to direct the video stream to, you need to add a new connection. Give it a name
+and point it to the RTMP server on your computer by pasting a URL like
+<code>rtmp://192.168.42.42:1935/live/ipad</code> into the URL field. Make sure to replace the IP address with
+the actual IP address of your computer! After configuring the connection it should look similar to
+this:
+<img src=/screencast-ipad-to-linux/larix_2.jpg alt="Larix Screencaster settings 2">
+To start a stream from your iPad follow the instructions show in
+<a href="https://www.youtube.com/watch?v=yvkkcRP8-2Y">https://www.youtube.com/watch?v=yvkkcRP8-2Y</a> .</p><h2 id=playing-the-stream>Playing the Stream</h2><p>To playback the stream captured on your iPad you need a program capable of playing RTMP streams. If you are
+a friend of running everything in your terminal <a href=https://mpv.io/>mpv</a> is the right choice for you.
+To play the stream the command
+<code>mpv rtmp://127.0.0.1:1935/live/ipad --profile=low-latency -demuxer-lavf-analyzeduration=5</code> can be used. To workaround Larix
+Screencasters problems with non vertical streams mpv can be used to rotate the video with the
+additional options <code>--video-rotate=90</code>. Sometimes it appears mpv does not recognize the video part
+of the stream, consider increasing <code>-demuxer-lavf-analyzeduration</code> in that case.
+Alternatively
+<a href=https://www.videolan.org/vlc/>VLC media player</a> is equally capable of playing RTMP streams. To
+play the stream go to the menu Media and choose Open Network Stream. This will open a prompt for the
+Network Stream to be opened, paste <code>rtmp://127.0.0.1:1935/live/ipad</code> into it. The stream should
+start playing then. VLC can also rotate the video, the option can be found under Tools >
+Effects and Filters > Video Effects > Geometry > Transform. I recommend mpv though as I could not
+find an option for VLC to minimize playback latency.
+<img src=/screencast-ipad-to-linux/fin.jpg alt=Fin.></p></article></section><footer><div><p class="f6 gray mt6 lh-copy"></p></div></footer><script src=//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.14.2/highlight.min.js></script><script>hljs.initHighlightingOnLoad();</script></body></html>
