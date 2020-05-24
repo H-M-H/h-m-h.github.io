@@ -37,7 +37,10 @@ rtmp {
     }
 }
 </code></pre><p>For documentation on all RTMP options refer to
-<a href=https://github.com/arut/nginx-rtmp-module/wiki/Directives>https://github.com/arut/nginx-rtmp-module/wiki/Directives</a> .</p><h2 id=the-app>The App</h2><p>On your iPad an app is required to stream your screen via RTMP. After extensive research the only
+<a href=https://github.com/arut/nginx-rtmp-module/wiki/Directives>https://github.com/arut/nginx-rtmp-module/wiki/Directives</a> .
+After configuring RTMP nginx needs to be restarted or at least reloaded to read the new
+configuration. On Arch Linux and Ubuntu this is done with <code>systemctl restart nginx</code>, on Arch Linux
+nginx needs to be enabled first with <code>systemctl enable nginx</code>.</p><h2 id=the-app>The App</h2><p>On your iPad an app is required to stream your screen via RTMP. After extensive research the only
 app I found to be acceptable is <a href=https://apps.apple.com/us/app/larix-screencaster/id1477313005>Larix
 Screencaster</a>. Unfortunately as of
 version 1.0.5 it still contains a bug that cuts off a part of your screen if you try to enable
